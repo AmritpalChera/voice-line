@@ -1,0 +1,12 @@
+{
+  "name": "voice-line",
+  "description": "Talk to your Claude Code session by phone.",
+  "owner": { "name": "Amritpal Chera" },
+  "plugins": [
+    {
+      "name": "voice-line",
+      "source": "./plugins/voice-line",
+      "description": "Call a phone number and talk to the Claude Code session on your computer."
+    }
+  ]
+}

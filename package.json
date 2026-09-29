@@ -1,0 +1,17 @@
+{
+  "name": "voice-line",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Claude Code channel: talk to your Claude Code session over a phone call.",
+  "scripts": {
+    "build": "esbuild src/server.mjs --bundle --platform=node --target=node20 --format=esm --outfile=plugins/voice-line/server.mjs --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\""
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
