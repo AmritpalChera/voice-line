@@ -1,7 +1,7 @@
 {
   "name": "voice-line",
   "displayName": "Voice Line",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Talk to this Claude Code session over a phone call. It answers with everything the session can use: your browser, connectors, MCPs and files.",
   "author": {
     "name": "Amritpal Chera"
@@ -19,7 +19,6 @@
         "${CLAUDE_PLUGIN_ROOT}/server.mjs"
       ],
       "env": {
-        "VOICE_LINE_TOKEN": "${user_config.token}",
         "VOICE_HUB_URL": "https://screwaivoice.com"
       }
     }
@@ -27,16 +26,7 @@
   "channels": [
     {
       "server": "voice-line",
-      "displayName": "Voice Line",
-      "userConfig": {
-        "token": {
-          "type": "string",
-          "title": "Voice line token",
-          "description": "Your Voice Line token (starts with vl_). Create one at screwaivoice.com under \"Connect Claude Code\".",
-          "sensitive": true,
-          "required": true
-        }
-      }
+      "displayName": "Voice Line"
     }
   ],
   "homepage": "https://screwaivoice.com"

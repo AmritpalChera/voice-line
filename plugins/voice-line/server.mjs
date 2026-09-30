@@ -7743,9 +7743,9 @@ var ParseStatus = class _ParseStatus {
   }
   static async mergeObjectAsync(status, pairs) {
     const syncPairs = [];
-    for (const pair of pairs) {
-      const key = await pair.key;
-      const value = await pair.value;
+    for (const pair2 of pairs) {
+      const key = await pair2.key;
+      const value = await pair2.value;
       syncPairs.push({
         key,
         value
@@ -7755,8 +7755,8 @@ var ParseStatus = class _ParseStatus {
   }
   static mergeObjectSync(status, pairs) {
     const finalObject = {};
-    for (const pair of pairs) {
-      const { key, value } = pair;
+    for (const pair2 of pairs) {
+      const { key, value } = pair2;
       if (key.status === "aborted")
         return INVALID;
       if (value.status === "aborted")
@@ -7765,7 +7765,7 @@ var ParseStatus = class _ParseStatus {
         status.dirty();
       if (value.status === "dirty")
         status.dirty();
-      if (key.value !== "__proto__" && (typeof value.value !== "undefined" || pair.alwaysSet)) {
+      if (key.value !== "__proto__" && (typeof value.value !== "undefined" || pair2.alwaysSet)) {
         finalObject[key.value] = value.value;
       }
     }
@@ -9648,13 +9648,13 @@ var ZodObject = class _ZodObject extends ZodType {
     if (ctx.common.async) {
       return Promise.resolve().then(async () => {
         const syncPairs = [];
-        for (const pair of pairs) {
-          const key = await pair.key;
-          const value = await pair.value;
+        for (const pair2 of pairs) {
+          const key = await pair2.key;
+          const value = await pair2.value;
           syncPairs.push({
             key,
             value,
-            alwaysSet: pair.alwaysSet
+            alwaysSet: pair2.alwaysSet
           });
         }
         return syncPairs;
@@ -10339,9 +10339,9 @@ var ZodMap = class extends ZodType {
     if (ctx.common.async) {
       const finalMap = /* @__PURE__ */ new Map();
       return Promise.resolve().then(async () => {
-        for (const pair of pairs) {
-          const key = await pair.key;
-          const value = await pair.value;
+        for (const pair2 of pairs) {
+          const key = await pair2.key;
+          const value = await pair2.value;
           if (key.status === "aborted" || value.status === "aborted") {
             return INVALID;
           }
@@ -10354,9 +10354,9 @@ var ZodMap = class extends ZodType {
       });
     } else {
       const finalMap = /* @__PURE__ */ new Map();
-      for (const pair of pairs) {
-        const key = pair.key;
-        const value = pair.value;
+      for (const pair2 of pairs) {
+        const key = pair2.key;
+        const value = pair2.value;
         if (key.status === "aborted" || value.status === "aborted") {
           return INVALID;
         }
@@ -18332,21 +18332,39 @@ var StdioServerTransport = class {
 };
 
 // src/server.mjs
+import { spawn } from "node:child_process";
+import { createHash, randomBytes } from "node:crypto";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, hostname as hostname2 } from "node:os";
+import { join } from "node:path";
 var HUB = process.env.VOICE_HUB_URL ?? "https://screwaivoice.com";
-var TOKEN = process.env.VOICE_LINE_TOKEN ?? "";
+var DATA_DIR = process.env.CLAUDE_PLUGIN_DATA || join(homedir(), ".voice-line");
+var TOKEN_FILE = join(DATA_DIR, "token");
+var TOKEN = process.env.VOICE_LINE_TOKEN || readToken();
+function readToken() {
+  try {
+    return readFileSync(TOKEN_FILE, "utf8").trim();
+  } catch {
+    return "";
+  }
+}
 var log = (...a) => console.error("[voice-line]", ...a);
-var INSTRUCTIONS = `The user is talking to you on a phone call. What they say arrives as <channel source="voice-line" msg_id="...">, transcribed from speech, so expect small transcription errors.
+var INSTRUCTIONS = `Messages from voice-line with kind="setup" come from the plugin, not from a caller: show them to the user as they are, and don't use the reply tool for them.
+The user is talking to you on a phone call. What they say arrives as <channel source="voice-line" msg_id="...">, transcribed from speech, so expect small transcription errors.
 Answer every message with the reply tool, in one to three short spoken sentences: no markdown, lists, code or URLs.
 Use whatever tools you have (browser, connectors, files) to do what they ask.
 If something will take more than about 30 seconds, reply first with a short acknowledgement ("On it, I'll call you when it's done"), do the work, then call call_me with the result. Use call_me as well if you need a decision from them after the call has ended.`;
 var latestMsgId = null;
 var pendingPermission = null;
+var Unauthorized = class extends Error {
+};
 async function hub(path, init = {}) {
   const res = await fetch(HUB + path, {
     ...init,
     headers: { "x-voice-token": TOKEN, "content-type": "application/json", ...init.headers ?? {} }
   });
   const body = await res.text();
+  if (res.status === 401) throw new Unauthorized("token rejected");
   if (!res.ok) throw new Error(`${init.method ?? "GET"} ${path} \u2192 ${res.status} ${body.slice(0, 200)}`);
   return body ? JSON.parse(body) : {};
 }
@@ -18432,17 +18450,70 @@ async function deliver(m) {
     params: { content: m.text, meta: { msg_id: m.id } }
   });
 }
+var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function tellUser(text) {
+  await mcp.notification({ method: "notifications/claude/channel", params: { content: text, meta: { kind: "setup" } } });
+}
+function openInBrowser(url) {
+  const [cmd, args] = process.platform === "darwin" ? ["open", [url]] : process.platform === "win32" ? ["cmd", ["/c", "start", "", url]] : ["xdg-open", [url]];
+  try {
+    const child = spawn(cmd, args, { stdio: "ignore", detached: true });
+    child.on("error", () => {
+    });
+    child.unref();
+  } catch {
+  }
+}
+async function pair() {
+  for (; ; ) {
+    const token = `vl_${randomBytes(24).toString("base64url")}`;
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+    const res = await fetch(`${HUB}/api/voice/pair/start`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token_hash: tokenHash, label: `${hostname2()} (Claude Code)` })
+    });
+    if (!res.ok) {
+      log("pairing start failed:", res.status);
+      await sleep(1e4);
+      continue;
+    }
+    const { code, url } = await res.json();
+    openInBrowser(url);
+    await tellUser(
+      `Voice Line needs to be connected to your account. A browser tab should have opened; if not, open ${url} and click "Connect this computer". The code is ${code}.`
+    );
+    for (; ; ) {
+      await sleep(3e3);
+      const s = await fetch(`${HUB}/api/voice/pair/status?code=${encodeURIComponent(code)}&token_hash=${tokenHash}`).then((r) => r.json()).catch(() => ({}));
+      if (s.approved) {
+        mkdirSync(DATA_DIR, { recursive: true });
+        writeFileSync(TOKEN_FILE, token + "\n", { mode: 384 });
+        TOKEN = token;
+        await tellUser("Voice Line is connected. You can call your agent line now; keep this session open.");
+        return;
+      }
+      if (s.expired) break;
+    }
+  }
+}
 async function pollForever() {
   for (; ; ) {
+    if (!TOKEN) await pair();
     try {
       const { messages = [] } = await hub("/api/voice/channel/pull");
       for (const m of messages) await deliver(m);
     } catch (err) {
+      if (err instanceof Unauthorized && !process.env.VOICE_LINE_TOKEN) {
+        log("token rejected (revoked?); pairing again");
+        rmSync(TOKEN_FILE, { force: true });
+        TOKEN = "";
+        continue;
+      }
       log("pull failed:", err.message);
-      await new Promise((r) => setTimeout(r, 3e3));
+      await sleep(3e3);
     }
   }
 }
 await mcp.connect(new StdioServerTransport());
-if (!TOKEN) log("no voice-line token set; enable the plugin again and enter your token");
 pollForever();
