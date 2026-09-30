@@ -18332,7 +18332,7 @@ var StdioServerTransport = class {
 };
 
 // src/server.mjs
-var HUB = process.env.VOICE_HUB_URL ?? "https://labs-eta-six.vercel.app";
+var HUB = process.env.VOICE_HUB_URL ?? "https://screwaivoice.com";
 var TOKEN = process.env.VOICE_LINE_TOKEN ?? "";
 var log = (...a) => console.error("[voice-line]", ...a);
 var INSTRUCTIONS = `The user is talking to you on a phone call. What they say arrives as <channel source="voice-line" msg_id="...">, transcribed from speech, so expect small transcription errors.

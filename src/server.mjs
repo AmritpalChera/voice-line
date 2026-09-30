@@ -13,7 +13,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js"
 import { z } from "zod"
 
-const HUB = process.env.VOICE_HUB_URL ?? "https://labs-eta-six.vercel.app"
+const HUB = process.env.VOICE_HUB_URL ?? "https://screwaivoice.com"
 const TOKEN = process.env.VOICE_LINE_TOKEN ?? ""
 const log = (...a) => console.error("[voice-line]", ...a) // stdout belongs to MCP
 

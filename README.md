@@ -6,14 +6,15 @@ servers and files. Long tasks keep running after you hang up, and Claude calls y
 
 ## Install
 
-In Claude Code:
+First create a token at [screwaivoice.com](https://screwaivoice.com) (sign in, then "Connect Claude Code").
+Then, in Claude Code:
 
 ```
 /plugin marketplace add AmritpalChera/voice-line
 /plugin install voice-line@voice-line
 ```
 
-Claude Code asks for your voice line token when the plugin is enabled.
+When Claude Code asks for your Voice Line token, paste the one you created (it starts with `vl_`).
 
 ## Start a session you can call
 
