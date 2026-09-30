@@ -18332,7 +18332,7 @@ var StdioServerTransport = class {
 };
 
 // src/server.mjs
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, hostname as hostname2 } from "node:os";
@@ -18356,6 +18356,15 @@ Use whatever tools you have (browser, connectors, files) to do what they ask.
 If something will take more than about 30 seconds, reply first with a short acknowledgement ("On it, I'll call you when it's done"), do the work, then call call_me with the result. Use call_me as well if you need a decision from them after the call has ended.`;
 var latestMsgId = null;
 var pendingPermission = null;
+function inChannelSession() {
+  if (process.env.VOICE_LINE_FORCE_CHANNEL) return true;
+  try {
+    const args = execFileSync("ps", ["-o", "args=", "-p", String(process.ppid)], { encoding: "utf8" });
+    return /--(dangerously-load-development-)?channels\b.*voice-line/.test(args);
+  } catch {
+    return true;
+  }
+}
 var Unauthorized = class extends Error {
 };
 async function hub(path, init = {}) {
@@ -18516,4 +18525,6 @@ async function pollForever() {
   }
 }
 await mcp.connect(new StdioServerTransport());
-pollForever();
+if (!inChannelSession()) {
+  log("not a channel session (start Claude Code with the channel flag to take calls); staying idle");
+} else pollForever();

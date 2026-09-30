@@ -1,7 +1,7 @@
 {
   "name": "voice-line",
   "displayName": "Voice Line",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Talk to this Claude Code session over a phone call. It answers with everything the session can use: your browser, connectors, MCPs and files.",
   "author": {
     "name": "Amritpal Chera"

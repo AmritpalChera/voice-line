@@ -13,7 +13,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js"
-import { spawn } from "node:child_process"
+import { execFileSync, spawn } from "node:child_process"
 import { createHash, randomBytes } from "node:crypto"
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { homedir, hostname } from "node:os"
@@ -42,6 +42,18 @@ If something will take more than about 30 seconds, reply first with a short ackn
 
 let latestMsgId = null // the phone conversation is one sequential thread: replies go to the newest message
 let pendingPermission = null // request_id of a tool approval read out on the call
+
+/** Only the session started with the channel flag can deliver calls. A plain session with the plugin
+ *  enabled must not pull messages (it would take them and drop them), so it stays idle. */
+function inChannelSession() {
+  if (process.env.VOICE_LINE_FORCE_CHANNEL) return true
+  try {
+    const args = execFileSync("ps", ["-o", "args=", "-p", String(process.ppid)], { encoding: "utf8" })
+    return /--(dangerously-load-development-)?channels\b.*voice-line/.test(args)
+  } catch {
+    return true // can't tell (no ps, e.g. Windows): behave as before
+  }
+}
 
 class Unauthorized extends Error {}
 
@@ -220,4 +232,6 @@ async function pollForever() {
 }
 
 await mcp.connect(new StdioServerTransport())
-pollForever()
+if (!inChannelSession()) {
+  log("not a channel session (start Claude Code with the channel flag to take calls); staying idle")
+} else pollForever()
